@@ -1,12 +1,14 @@
 import ollama
+from ollama import chat
+from ollama import ChatResponse
 import time
-from typing import List, Dict, Any
 import numpy as np
+from typing import List, Dict, Any
 from concurrent.futures import ThreadPoolExecutor
 
-class EnhancedCoT:
+class CoT:
     def __init__(self, model_name: str = "llama3.2-vision:11b-instruct-q4_K_M", num_branches: int = 3, 
-                 temperature_range: tuple = (0.1, 0.8)):
+                 temperature_range: tuple = (0.3, 0.6)):
         self.model = model_name
         self.num_branches = num_branches
         self.temp_range = temperature_range
@@ -93,6 +95,6 @@ class EnhancedCoT:
 
 # Usage example
 if __name__ == "__main__":
-    enhanced_cot = EnhancedCoT()
+    enhanced_cot = CoT()
     result = enhanced_cot.enhanced_cot("Explain the process of photosynthesis")
     print(result)

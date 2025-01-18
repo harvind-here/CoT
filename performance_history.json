@@ -1,0 +1,18 @@
+[
+  {
+    "timestamp": "2025-01-18 16:56:55",
+    "prompt": "Hi",
+    "time_taken": 5.49,
+    "token_speed": 3.83,
+    "num_branches": 3,
+    "total_tokens": 21
+  },
+  {
+    "timestamp": "2025-01-18 16:57:26",
+    "prompt": "Hi",
+    "time_taken": 5.11,
+    "token_speed": 4.11,
+    "num_branches": 3,
+    "total_tokens": 21
+  }
+]

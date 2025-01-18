@@ -1,100 +1,111 @@
-import ollama
-from ollama import chat
-from ollama import ChatResponse
 import time
 import numpy as np
-from typing import List, Dict, Any
-from concurrent.futures import ThreadPoolExecutor
+from typing import List, Dict, Any, Optional
+import ollama
+import json
+from pathlib import Path
 
 class CoT:
-    def __init__(self, model_name: str = "llama3.2-vision:11b-instruct-q4_K_M", num_branches: int = 3, 
-                 temperature_range: tuple = (0.3, 0.6)):
+    def __init__(self, 
+                 model_name: str, 
+                 num_branches: int = 3,
+                 temperature_range: tuple = (0.1, 0.8),
+                 history_file: str = r'C:\Users\harvi\Codebases\LLMOps\CoT\performance_history.json'):
         self.model = model_name
         self.num_branches = num_branches
         self.temp_range = temperature_range
-        self.performance_history = []
-        
-    def generate_thought_branches(self, prompt: str) -> List[str]:
-        """Generate multiple thought branches using different perspectives"""
-        thoughts = []
-        temperatures = np.linspace(self.temp_range[0], self.temp_range[1], self.num_branches)
-        
-        def get_branch(temp):
-            response = ollama.generate(model=self.model,
-                                     prompt=f"Think step by step:\n{prompt}",
-                                     temperature=temp)
-            return response['response']
-            
-        with ThreadPoolExecutor() as executor:
-            thoughts = list(executor.map(get_branch, temperatures))
-        return thoughts
+        self.history_file = Path(history_file)
+        self.ensure_history_file()
     
-    def verify_consistency(self, thoughts: List[str]) -> Dict[str, float]:
-        """Verify consistency between different thought branches"""
-        consistency_scores = {}
-        for i, thought in enumerate(thoughts):
-            # Calculate semantic similarity with other thoughts
-            score = ollama.generate(
-                model=self.model,
-                prompt=f"Rate the logical consistency of this thought from 0-1:\n{thought}")
-            consistency_scores[f"branch_{i}"] = float(score['response'])
-        return consistency_scores
-    
-    def optimize_response(self, thoughts: List[str], 
-                         consistency_scores: Dict[str, float]) -> str:
-        """Select the most reliable thought branch"""
-        best_branch_idx = max(consistency_scores.items(), 
-                            key=lambda x: x[1])[0].split('_')[1]
-        return thoughts[int(best_branch_idx)]
-    
-    def monitor_performance(self, execution_time: float, 
-                          consistency_score: float) -> None:
-        """Monitor and track performance metrics"""
-        self.performance_history.append({
-            'execution_time': execution_time,
-            'consistency_score': consistency_score
-        })
-        
-    def dynamic_temperature_adjustment(self) -> None:
-        """Adjust temperature range based on performance history"""
-        if len(self.performance_history) > 5:
-            recent_scores = [p['consistency_score'] 
-                           for p in self.performance_history[-5:]]
-            if np.mean(recent_scores) < 0.5:
-                self.temp_range = (max(0.1, self.temp_range[0] - 0.1),
-                                 max(0.3, self.temp_range[1] - 0.1))
-                
-    def enhanced_cot(self, prompt: str) -> str:
-        """Main method implementing the enhanced CoT process"""
-        start_time = time.time()
-        
+    def ensure_history_file(self) -> None:
+        """Create history file if it doesn't exist"""
+        if not self.history_file.exists():
+            self.history_file.parent.mkdir(parents=True, exist_ok=True)
+            self.history_file.write_text('[]')
+
+    def save_metrics(self, metrics: Dict[str, Any]) -> None:
+        """Save metrics to JSON file"""
         try:
-            # Generate multiple thought branches
-            thoughts = self.generate_thought_branches(prompt)
+            if self.history_file.exists():
+                data = json.loads(self.history_file.read_text())
+            else:
+                data = []
             
-            # Verify consistency
-            consistency_scores = self.verify_consistency(thoughts)
+            data.append(metrics)
+            self.history_file.write_text(json.dumps(data, indent=2))
+        except Exception as e:
+            print(f"Error saving metrics: {str(e)}")
+
+    def generate_thought_branches(self, prompt: str) -> List[str]:
+        """Generate multiple thought branches using different temperatures"""
+        branches = []
+        for _ in range(self.num_branches):
+            try:
+                temperature = np.random.uniform(*self.temp_range)
+                response = ollama.chat(
+                    model=self.model,
+                    messages=[{'role': 'user', 'content': prompt}],
+                    stream=True,
+                    options={
+                        'temperature': temperature
+                    }
+                )
+                
+                branch_text = ""
+                print(f"\nBranch with temperature {temperature:.2f}:")
+                for chunk in response:
+                    if 'message' in chunk and 'content' in chunk['message']:
+                        chunk_text = chunk['message']['content']
+                        print(chunk_text, end='', flush=True)
+                        branch_text += chunk_text
+                print("\n")
+                
+                branches.append(branch_text)
+            except Exception as e:
+                print(f"Error generating branch: {str(e)}")
+                continue
+        
+        return branches
+
+    def cot_main(self, prompt: str) -> Optional[str]:
+        """Main method implementing the enhanced CoT process"""
+        try:
+            start_time = time.time()
+            branches = self.generate_thought_branches(prompt)
             
-            # Get optimized response
-            final_response = self.optimize_response(thoughts, consistency_scores)
+            if not branches:
+                raise ValueError("No successful thought branches generated")
             
-            # Monitor performance
-            execution_time = time.time() - start_time
-            avg_consistency = np.mean(list(consistency_scores.values()))
-            self.monitor_performance(execution_time, avg_consistency)
+            final_response = "\n".join(branches)
+            end_time = time.time()
             
-            # Adjust parameters dynamically
-            self.dynamic_temperature_adjustment()
+            # Calculate metrics
+            time_taken = end_time - start_time
+            tokens = len(final_response.split())
+            token_speed = tokens / time_taken if time_taken > 0 else 0
             
+            metrics = {
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "prompt": prompt,
+                "time_taken": round(time_taken, 2),
+                "token_speed": round(token_speed, 2),
+                "num_branches": len(branches),
+                "total_tokens": tokens
+            }
+            
+            self.save_metrics(metrics)
             return final_response
             
         except Exception as e:
-            # Fallback to simple completion
-            return ollama.generate(model=self.model, 
-                                 prompt=prompt)['response']
+            print(f"Error in enhanced_cot: {str(e)}")
+            return None
 
-# Usage example
 if __name__ == "__main__":
-    enhanced_cot = CoT()
-    result = enhanced_cot.enhanced_cot("Explain the process of photosynthesis")
-    print(result)
+    try:
+        # Using a valid model name that's already pulled
+        enhanced_cot = CoT(model_name="qwen2:7b")
+        result = enhanced_cot.cot_main("Hi")
+        if result:
+            print("\nFinal combined response:", result)
+    except Exception as e:
+        print(f"Error: {str(e)}")

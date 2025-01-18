@@ -102,7 +102,6 @@ class CoT:
 
 if __name__ == "__main__":
     try:
-        # Using a valid model name that's already pulled
         enhanced_cot = CoT(model_name="qwen2:7b")
         result = enhanced_cot.cot_main("Hi")
         if result:

@@ -83,20 +83,20 @@ class CoT:
         try:
             start_time = time.time()
             
-            # Analyze complexity and get steps
+
             num_steps, stages = self.analyze_complexity(prompt)
             
             print(f"\nQuery requires {num_steps} steps:")
             for stage in stages:
                 print(stage)
             
-            # Generate responses for each stage
+
             full_response = ""
             for i, stage in enumerate(stages, 1):
                 stage_resp = self.generate_response(stage, i, num_steps, full_response)
                 full_response += f"{stage_resp}\n"
             
-            # Calculate metrics
+
             end_time = time.time()
             metrics = {
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),

@@ -14,5 +14,34 @@
     "token_speed": 4.11,
     "num_branches": 3,
     "total_tokens": 21
+  },
+  {
+    "timestamp": "2025-01-18 17:26:48",
+    "prompt": "Hi Qwen!",
+    "time_taken": 13.63,
+    "token_speed": 4.77,
+    "num_branches": 1,
+    "total_tokens": 65
+  },
+  {
+    "timestamp": "2025-01-18 17:59:52",
+    "prompt": "Explain how a quantum computer works",
+    "time_taken": 1126.43,
+    "num_stages": 5,
+    "total_tokens": 2875
+  },
+  {
+    "timestamp": "2025-01-18 18:14:18",
+    "prompt": "Explain quantum entanglement and its applications",
+    "time_taken": 211.63,
+    "num_steps": 3,
+    "total_tokens": 555
+  },
+  {
+    "timestamp": "2025-01-18 18:21:52",
+    "prompt": "Explain quantum entanglement and its applications",
+    "time_taken": 164.28,
+    "num_steps": 3,
+    "total_tokens": 362
   }
 ]
